@@ -23,15 +23,20 @@ jobs:
 
       - name: Build Windows GUI Executables & Setup Installer
         run: |
-          # Install rsrc for Windows resources compiling
+          # Install rsrc for Windows resources compiling and wails for GUI
           go install github.com/akavel/rsrc@latest
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
           
           # Create embed folder
           mkdir -p go/cmd/installer/embed
           
-          # Build all sub-binaries for Windows
-          cd go
-          GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o cmd/installer/embed/markitdown.exe ./cmd/converter-gui
+          # Build Wails GUI for Windows
+          cd go/cmd/converter-gui
+          $(go env GOPATH)/bin/wails build -platform windows/amd64 -clean -o markitdown.exe
+          cd ../..
+          mv cmd/converter-gui/build/bin/markitdown.exe cmd/installer/embed/markitdown.exe
+          
+          # Build all other sub-binaries for Windows
           GOOS=windows GOARCH=amd64 go build -o cmd/installer/embed/markitdown-cli.exe ./cmd/converter-cli
           GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o cmd/installer/embed/print-watcher.exe ./cmd/print-watcher
           GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o cmd/installer/embed/markitdown-printer.exe ./cmd/printer-markdown
@@ -86,21 +91,32 @@ jobs:
         with:
           go-version: '1.26'
 
-      - name: Build macOS CLI Binaries (Intel & Apple Silicon)
+      - name: Build macOS GUI & CLI Binaries
         run: |
+          # Install Wails CLI
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          
+          # Build macOS Wails GUI App (Universal)
+          cd go/cmd/converter-gui
+          $(go env GOPATH)/bin/wails build -platform darwin/universal -clean -o MarkItDown
+          cd ../../..
+          
+          # Build macOS CLI Binaries (Intel & Apple Silicon)
           cd go
-          # macOS Intel (amd64)
           GOOS=darwin GOARCH=amd64 go build -o ../markitdown-darwin-amd64 ./cmd/converter-cli
-          # macOS Apple Silicon (arm64)
           GOOS=darwin GOARCH=arm64 go build -o ../markitdown-darwin-arm64 ./cmd/converter-cli
           cd ..
 
       - name: Build macOS PKG Installer
         run: |
           # Create folders for installer payload and scripts
+          mkdir -p pkg_root/Applications
           mkdir -p pkg_root/usr/local/bin
           mkdir -p "pkg_root/Library/PDF Services"
           mkdir -p pkg_scripts
+          
+          # Copy Wails GUI App bundle
+          cp -R go/cmd/converter-gui/build/bin/MarkItDown.app pkg_root/Applications/
           
           # Create universal binary using lipo
           lipo -create -output pkg_root/usr/local/bin/markitdown-cli markitdown-darwin-amd64 markitdown-darwin-arm64
@@ -115,6 +131,7 @@ jobs:
           # Create a postinstall script to ensure correct permissions
           cat << 'EOF' > pkg_scripts/postinstall
           #!/bin/sh
+          chmod -R 755 "/Applications/MarkItDown.app"
           chmod +x "/usr/local/bin/markitdown-cli"
           chmod +x "/Library/PDF Services/Print to Markdown"
           chmod +x "/Library/PDF Services/Print to EPUB"

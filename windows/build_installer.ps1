@@ -17,15 +17,20 @@ if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
     Exit 1
 }
 
-# 3. Check for rsrc utility (needed for Windows manifests)
+# 3. Check for rsrc and wails utilities
+$GoBin = Join-Path (go env GOPATH) "bin"
+if ($env:PATH -notlike "*$GoBin*") {
+    $env:PATH += ";$GoBin"
+}
+
 if (-not (Get-Command rsrc -ErrorAction SilentlyContinue)) {
     Write-Host "Installing rsrc tool..." -ForegroundColor Yellow
     go install github.com/akavel/rsrc@latest
-    # Check if go/bin is in PATH, if not add it dynamically for this session
-    $GoBin = Join-Path (go env GOPATH) "bin"
-    if ($env:PATH -notlike "*$GoBin*") {
-        $env:PATH += ";$GoBin"
-    }
+}
+
+if (-not (Get-Command wails -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing Wails CLI..." -ForegroundColor Yellow
+    go install github.com/wailsapp/wails/v2/cmd/wails@latest
 }
 
 # 4. Compile Sub-Binaries
@@ -33,9 +38,12 @@ Write-Host "Compiling sub-binaries..." -ForegroundColor Yellow
 
 Push-Location (Join-Path $RootDir "go")
 try {
-    Write-Host "  Building markitdown.exe (GUI)..."
-    go build -ldflags="-H=windowsgui" -o "$EmbedDir\markitdown.exe" ./cmd/converter-gui
-    if ($LASTEXITCODE -ne 0) { throw "go build markitdown.exe failed" }
+    Write-Host "  Building markitdown.exe (Wails GUI)..."
+    Push-Location (Join-Path $RootDir "go\cmd\converter-gui")
+    wails build -clean -o markitdown.exe
+    if ($LASTEXITCODE -ne 0) { throw "wails build markitdown.exe failed" }
+    Move-Item -Path "build\bin\markitdown.exe" -Destination "$EmbedDir\markitdown.exe" -Force
+    Pop-Location
 
     Write-Host "  Building markitdown-cli.exe (CLI)..."
     go build -o "$EmbedDir\markitdown-cli.exe" ./cmd/converter-cli

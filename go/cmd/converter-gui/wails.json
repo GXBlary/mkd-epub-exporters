@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "MarkItDown",
+  "outputfilename": "markitdown.exe",
+  "frontend:dir": "frontend",
+  "frontend:install": "node -v",
+  "frontend:build": "node -v",
+  "wailsjsdir": "frontend/wailsjs",
+  "author": {
+    "name": "Xavier Blary",
+    "email": "gxblary@gmail.com"
+  },
+  "info": {
+    "companyName": "Mkd Epub Exporters",
+    "productName": "MarkItDown Converter",
+    "productVersion": "1.0.1",
+    "copyright": "Copyright 2026 Xavier Blary",
+    "comments": "High-performance document converter"
+  },
+  "maindir": "."
+}
