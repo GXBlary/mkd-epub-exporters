@@ -64,6 +64,28 @@ jobs:
           tar -czvf markitdown-linux-amd64.tar.gz markitdown-linux-amd64 LICENSE-THIRD-PARTY.md
           rm markitdown-linux-amd64
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            markitdown-setup.exe
+            markitdown-linux-amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-release-macos:
+    name: Build & Release macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
       - name: Build macOS CLI Binaries (Intel & Apple Silicon)
         run: |
           cd go
@@ -72,17 +94,53 @@ jobs:
           # macOS Apple Silicon (arm64)
           GOOS=darwin GOARCH=arm64 go build -o ../markitdown-darwin-arm64 ./cmd/converter-cli
           cd ..
+
+      - name: Build macOS PKG Installer
+        run: |
+          # Create folders for installer payload and scripts
+          mkdir -p pkg_root/usr/local/bin
+          mkdir -p "pkg_root/Library/PDF Services"
+          mkdir -p pkg_scripts
+          
+          # Create universal binary using lipo
+          lipo -create -output pkg_root/usr/local/bin/markitdown-cli markitdown-darwin-amd64 markitdown-darwin-arm64
+          chmod +x pkg_root/usr/local/bin/markitdown-cli
+          
+          # Copy PDF Services shell scripts
+          cp "macos/Print to Markdown.sh" "pkg_root/Library/PDF Services/Print to Markdown"
+          cp "macos/Print to EPUB.sh" "pkg_root/Library/PDF Services/Print to EPUB"
+          chmod +x "pkg_root/Library/PDF Services/Print to Markdown"
+          chmod +x "pkg_root/Library/PDF Services/Print to EPUB"
+          
+          # Create a postinstall script to ensure correct permissions
+          cat << 'EOF' > pkg_scripts/postinstall
+          #!/bin/sh
+          chmod +x "/usr/local/bin/markitdown-cli"
+          chmod +x "/Library/PDF Services/Print to Markdown"
+          chmod +x "/Library/PDF Services/Print to EPUB"
+          exit 0
+          EOF
+          chmod +x pkg_scripts/postinstall
+          
+          # Build the .pkg installer
+          pkgbuild --root pkg_root \
+                   --identifier "com.gxblary.markitdown" \
+                   --version "${{ github.ref_name }}" \
+                   --install-location "/" \
+                   --scripts pkg_scripts \
+                   markitdown-setup-macos.pkg
+
+      - name: Create Tarballs for CLI
+        run: |
           tar -czvf markitdown-darwin-amd64.tar.gz markitdown-darwin-amd64 LICENSE-THIRD-PARTY.md
           tar -czvf markitdown-darwin-arm64.tar.gz markitdown-darwin-arm64 LICENSE-THIRD-PARTY.md
-          rm markitdown-darwin-amd64 markitdown-darwin-arm64
 
-      - name: Create GitHub Release
+      - name: Update GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            markitdown-setup.exe
-            markitdown-linux-amd64.tar.gz
+            markitdown-setup-macos.pkg
             markitdown-darwin-amd64.tar.gz
             markitdown-darwin-arm64.tar.gz
         env:

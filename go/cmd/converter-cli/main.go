@@ -13,12 +13,14 @@ import (
 func main() {
 	// Parse CLI arguments
 	outputDir := flag.String("out", "", "Output directory for converted files (required)")
+	format := flag.String("format", "md", "Output format: md or epub (default: md)")
+	embed := flag.Bool("embed", false, "Embed local images as base64 data URIs in Markdown (default: false)")
 	flag.Parse()
 
 	files := flag.Args()
 
 	if len(files) == 0 {
-		fmt.Println("Usage: markitdown -out <output_directory> <file1> [file2] ...")
+		fmt.Println("Usage: markitdown -out <output_directory> [-format md|epub] [-embed] <file1> [file2] ...")
 		os.Exit(1)
 	}
 
@@ -48,10 +50,11 @@ func main() {
 	fmt.Printf("Starting conversion of %d file(s)...\n", len(allFiles))
 	successCount := 0
 	errorCount := 0
+	fmtFormat := strings.ToLower(*format)
 
 	for i, fPath := range allFiles {
 		fmt.Printf("[%d/%d] Converting %s...\n", i+1, len(allFiles), filepath.Base(fPath))
-		mdContent, err := converter.ConvertFile(fPath, *outputDir, false)
+		mdContent, err := converter.ConvertFile(fPath, *outputDir, *embed)
 		if err != nil {
 			fmt.Printf("  -> Failed: %v\n", err)
 			errorCount++
@@ -59,20 +62,33 @@ func main() {
 		}
 
 		// Avoid name collisions in output folder
-		outName := strings.TrimSuffix(filepath.Base(fPath), filepath.Ext(fPath)) + ".md"
-		outPath := filepath.Join(*outputDir, outName)
+		stem := strings.TrimSuffix(filepath.Base(fPath), filepath.Ext(fPath))
+		var outPath string
 
-		counter := 1
-		for {
-			if _, err := os.Stat(outPath); os.IsNotExist(err) {
-				break
+		if fmtFormat == "epub" {
+			outPath = filepath.Join(*outputDir, stem+".epub")
+			counter := 1
+			for {
+				if _, err := os.Stat(outPath); os.IsNotExist(err) {
+					break
+				}
+				outPath = filepath.Join(*outputDir, fmt.Sprintf("%s_%d.epub", stem, counter))
+				counter++
 			}
-			stem := strings.TrimSuffix(filepath.Base(fPath), filepath.Ext(fPath))
-			outPath = filepath.Join(*outputDir, fmt.Sprintf("%s_%d.md", stem, counter))
-			counter++
+			err = converter.ConvertToEpub(mdContent, stem, outPath)
+		} else {
+			outPath = filepath.Join(*outputDir, stem+".md")
+			counter := 1
+			for {
+				if _, err := os.Stat(outPath); os.IsNotExist(err) {
+					break
+				}
+				outPath = filepath.Join(*outputDir, fmt.Sprintf("%s_%d.md", stem, counter))
+				counter++
+			}
+			err = os.WriteFile(outPath, []byte(mdContent), 0644)
 		}
 
-		err = os.WriteFile(outPath, []byte(mdContent), 0644)
 		if err != nil {
 			fmt.Printf("  -> Failed to write: %v\n", err)
 			errorCount++

@@ -57,6 +57,23 @@ To install MarkItDown and/or the Virtual Printers on Windows without compiling f
 
 ---
 
+### 🍎 macOS Installation (Recommended for most users)
+
+To install MarkItDown and the Virtual Printers on macOS:
+1. Download **`markitdown-setup-macos.pkg`** from the [GitHub Releases](https://github.com/gxblary/mkd-epub-exporters/releases) page.
+2. Double-click the downloaded installer and follow the standard instructions.
+3. This installer will automatically configure:
+   * **CLI Converter**: `/usr/local/bin/markitdown-cli` (natively optimized for both Apple Silicon M1/M2/M3 and Intel CPUs).
+   * **PDF Services**: Registers system-wide print shortcuts.
+4. **How to use (Virtual Printers)**:
+   * Open any document (in Safari, Chrome, Word, Pages, Preview, etc.).
+   * Press **CMD + P** to open the print dialog.
+   * Click the **PDF** dropdown menu button at the bottom left of the print settings.
+   * Select **"Print to Markdown"** or **"Print to EPUB"**.
+   * A dialog will pop up requesting where you would like to save the file.
+
+---
+
 ### 💻 Advanced Installation & Development (For Power Users / Developers)
 
 #### Requirements
