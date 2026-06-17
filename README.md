@@ -37,7 +37,6 @@ This project contains two main packages:
         *   `printer-epub`: Virtual printer capturing EPUB prints.
         *   `print-watcher`: Background service capturing spooler files.
         *   `installer-markdown`/`installer-epub`: Double-clickable UAC installer wrappers.
-*   [**`python/`**](./python): Original python converter application.
 *   [**`resources/`**](./resources): Port monitors (`mfilemon.dll`), python executables, and print drivers.
 *   [**`windows/`**](./windows): Contains Windows-specific setup scripts (build script and manual virtual printer installer).
 *   [**`macos/`**](./macos): Contains macOS-specific print service scripts.
